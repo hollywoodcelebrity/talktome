@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rose, Bud & Thorn Journal</title>
+  <style>
+    body {
+      font-family: 'Merriweather', serif;
+      background-color: #fff;
+      color: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+    h1 {
+      margin-bottom: 20px;
+      font-weight: normal;
+      font-size: 26px;
+      color: #2a2a2a;
+      font-family: 'Playfair Display', serif;
+    }
+    form {
+      text-align: center;
+    }
+    textarea {
+      width: 400px;
+      max-width: 80%;
+      padding: 10px;
+      font-family: inherit;
+      background: #f7f7f7;
+      color: #000;
+      border: none;
+      border-bottom: 1px solid #bbb;
+      outline: none;
+      resize: none;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+    button {
+      background: none;
+      border: 1px solid #aaa;
+      padding: 8px 16px;
+      font-family: inherit;
+      font-size: 14px;
+      cursor: pointer;
+      color: #000;
+    }
+    .entries {
+      margin-top: 20px;
+      font-size: 14px;
+      max-width: 500px;
+    }
+    .ascii-art {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(1);
+      white-space: pre;
+      font-family: 'Courier New', monospace;
+      font-size: 28px;
+      line-height: 1.2;
+      text-align: center;
+      opacity: 0.65;
+      color: green;
+      pointer-events: none;
+      transition: opacity 1.5s ease, transform 2s ease, font-size 2s ease, color 2s ease;
+    }
+    .ascii-art.burst {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.6) rotate(20deg);
+      font-size: 36px;
+      color: limegreen;
+    }
+    .reward {
+      position: absolute;
+      font-size: 32px;
+      opacity: 0;
+      animation: pop 2s ease forwards;
+      pointer-events: none;
+    }
+    @keyframes pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      30% { transform: scale(1.5); opacity: 1; }
+      70% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(0.5); opacity: 0; }
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+  <h1>Talk to me</h1>
+  <form id="rbt-form">
+    <textarea id="rose" rows="2" placeholder="Rose (highlight of the week)"></textarea>
+    <textarea id="bud" rows="2" placeholder="Bud (something to look forward to)" style="display:none;"></textarea>
+    <textarea id="thorn" rows="2" placeholder="Thorn (challenge of the week)" style="display:none;"></textarea>
+    <button type="submit">Add Entry</button>
+  </form>
+
+  <div class="entries" id="entries"></div>
+  <div class="ascii-art" id="asciiArt"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const entriesRef = ref(db, 'entries');
+
+    const form = document.getElementById('rbt-form');
+    const entriesDiv = document.getElementById('entries');
+    const asciiDiv = document.getElementById('asciiArt');
+
+    const rewards = ["★", "✿", "✦", "❀", "☼", "♥", "❉", "☯"];
+
+    const artStages = [
+`           .       .       .           \n       .    *  .-.  *    .       \n    .  *  (   (   )   )  *  .    \n       *    \'-._.-'/    *       \n           \'       \'           `,
+`        @@@@@@@@@@@@@@@@@        \n     @@@                 @@@     \n  @@     @@@@@@@@@@@@@     @@    \n     @@@                 @@@     \n        @@@@@@@@@@@@@@@@@        `,
+`         ///////|\\\\\\\\\n     /////             \\\\\n   |||   /////     \\\\\   |||\n     \\\\\             /////\n         \\\\\|///////        `,
+`       <>====<>====<>====<>       \n    //                    \\\    \n <>    <>==<>==<>==<>==<>    <>   \n    \\\                    //    \n       <>====<>====<>====<>       `,
+`        *-*-*-*-*-*-*-*-*         \n    -*-                   -*-      \n        *-*-*-*-*-*-*-*-*          `
+    ];
+
+    let currentStage = 0;
+    let currentRotation = 0;
+
+    function cycleAscii() {
+      asciiDiv.textContent = artStages[currentStage];
+      currentStage = (currentStage + 1) % artStages.length;
+      currentRotation += 60;
+      asciiDiv.style.transform = `translate(-50%, -50%) scale(1.2) rotate(${currentRotation}deg)`;
+    }
+
+    setInterval(cycleAscii, 5000);
+
+    let stageForm = 0;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const rose = document.getElementById('rose').value.trim();
+      const bud = document.getElementById('bud').value.trim();
+      const thorn = document.getElementById('thorn').value.trim();
+
+      if (stageForm === 0) {
+        document.getElementById('rose').style.display = 'none';
+        document.getElementById('bud').style.display = 'block';
+        stageForm++;
+        return;
+      } else if (stageForm === 1) {
+        document.getElementById('bud').style.display = 'none';
+        document.getElementById('thorn').style.display = 'block';
+        stageForm++;
+        return;
+      } else {
+        const entry = { rose, bud, thorn };
+        push(entriesRef, entry);
+
+        document.getElementById('rose').value = '';
+        document.getElementById('bud').value = '';
+        document.getElementById('thorn').value = '';
+
+        document.getElementById('thorn').style.display = 'none';
+        document.getElementById('rose').style.display = 'block';
+        stageForm = 0;
+
+        currentRotation += 90;
+        asciiDiv.classList.add('burst');
+        asciiDiv.style.transform = `translate(-50%, -50%) scale(1.6) rotate(${currentRotation}deg)`;
+        setTimeout(() => {
+          asciiDiv.classList.remove('burst');
+          asciiDiv.style.transform = `translate(-50%, -50%) scale(1.2) rotate(${currentRotation}deg)`;
+        }, 2000);
+
+        const reward = document.createElement('div');
+        reward.classList.add('reward');
+        reward.textContent = rewards[Math.floor(Math.random() * rewards.length)];
+        reward.style.top = Math.random() * window.innerHeight + 'px';
+        reward.style.left = Math.random() * window.innerWidth + 'px';
+        document.body.appendChild(reward);
+        setTimeout(() => reward.remove(), 2000);
+      }
+    });
+
+    onChildAdded(entriesRef, (snapshot) => {
+      const { rose, bud, thorn } = snapshot.val();
+      const entry = document.createElement('div');
+      entry.innerHTML = `
+        <p><strong>Rose:</strong> ${rose || '-'}<br>
+        <strong>Bud:</strong> ${bud || '-'}<br>
+        <strong>Thorn:</strong> ${thorn || '-'}</p>
+        <hr>
+      `;
+      entriesDiv.prepend(entry);
+    });
+  </script>
+</body>
+</html>
