@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rose, Bud & Thorn Journal</title>
@@ -108,20 +112,39 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+const firebaseConfig = {
+  apiKey: "AIzaSyBdrfqz84Yy_IlnNn6QJjJJoqb8AzuqG6s",
+  authDomain: "talktome-e4d96.firebaseapp.com",
+  projectId: "talktome-e4d96",
+  storageBucket: "talktome-e4d96.firebasestorage.app",
+  messagingSenderId: "37255988403",
+  appId: "1:37255988403:web:5fb234fb804744e74a5cc6",
+  measurementId: "G-HD88BYQMDB"
+};
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const entriesRef = ref(db, 'entries');
 
+    function saveEntry(text) {
+  db.collection("entries").add({
+    text: text,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+    db.collection("entries")
+  .orderBy("timestamp", "desc")
+  .onSnapshot((snapshot) => {
+    const list = document.getElementById("entries");
+    list.innerHTML = ""; // clear old
+    snapshot.forEach((doc) => {
+      const li = document.createElement("li");
+      li.textContent = doc.data().text;
+      list.appendChild(li);
+    });
+  });
+    
     const form = document.getElementById('rbt-form');
     const entriesDiv = document.getElementById('entries');
     const asciiDiv = document.getElementById('asciiArt');
